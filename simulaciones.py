@@ -1,90 +1,147 @@
-import logging
+"""Escenarios de simulación del sistema de gestión de Software FJ."""
+
+from exceptions.excepciones_personalizadas import DatoInvalidoError, ReservaError
 from models.cliente import Cliente
-from models.servicio import ReservaSalas, AlquilerEquipos, AsesoriaEspecializada
 from models.reserva import Reserva
-from exceptions.excepciones_personalizadas import ClienteInvalidoError, ReservaError
+from models.servicio_asesoria import AsesoriaEspecializada
+from models.servicio_equipos import AlquilerEquipos
+from models.servicio_salas import ReservaSalas
+from utils.logger import logger
 
-def correr_diez_operaciones():
-    print("INICIO DE PRUEBAS DE SIMULACION - SOFTWARE FJ")
+
+def crear_cliente(documento="1023456", nombre="Carlos Pérez",
+                  correo="carlos@mail.com", telefono="3001234567"):
+    return Cliente(documento, nombre, correo, telefono)
+
+
+# Escenarios válidos
+
+def reserva_sala():
+    sala = ReservaSalas("S01", "Sala Ejecutiva", 50.0, 10)
+    reserva = Reserva("RES-001", crear_cliente(), sala, 3)
+    reserva.confirmar()
+    reserva.procesar()
+
+
+def alquiler_equipo():
+    cliente = crear_cliente("1023457", "María Rodríguez", "maria@mail.com", "3009876543")
+    equipo = AlquilerEquipos("E01", "Laptop Core i7", 30.0, "SN-9988")
+    reserva = Reserva("RES-002", cliente, equipo, 5)
+    reserva.confirmar()
+    reserva.procesar()
+
+
+def asesoria_especializada():
+    cliente = crear_cliente("1023459", "Lucía Torres", "lucia@mail.com", "3005554433")
+    asesoria = AsesoriaEspecializada("A01", "Consultoría Cloud", 120.0, "Arquitectura")
+    reserva = Reserva("RES-003", cliente, asesoria, 2)
+    reserva.confirmar()
+    reserva.procesar()
+
+
+def cancelar_reserva():
+    equipo = AlquilerEquipos("E02", "Proyector Laser", 45.0, "SN-1122")
+    reserva = Reserva("RES-004", crear_cliente(), equipo, 2)
+    reserva.confirmar()
+    reserva.cancelar()
+
+
+def costos_por_servicio():
+    servicios = [
+        ReservaSalas("S02", "Sala Juntas", 40.0, 6),
+        AlquilerEquipos("E03", "Cámara 4K", 25.0, "SN-3344"),
+        AsesoriaEspecializada("A02", "Asesoría Datos", 100.0, "Analítica"),
+    ]
+    for servicio in servicios:
+        print(f"   {type(servicio).__name__}: {servicio.calcular_costo(2)}")
+
+
+# Escenarios inválidos
+
+def documento_invalido():
+    crear_cliente(documento="ABC1234")
+
+
+def correo_invalido():
+    crear_cliente(correo="carlosmail.com")
+
+
+def nombre_vacio():
+    crear_cliente(nombre="")
+
+
+def telefono_invalido():
+    crear_cliente(telefono="12ab")
+
+
+def horas_negativas():
+    sala = ReservaSalas("S03", "Sala Mini", 20.0, 4)
+    Reserva("RES-005", crear_cliente(), sala, -4)
+
+
+def procesar_sin_confirmar():
+    sala = ReservaSalas("S04", "Sala Auxiliar", 30.0, 5)
+    Reserva("RES-006", crear_cliente(), sala, 1).procesar()
+
+
+def cancelar_dos_veces():
+    sala = ReservaSalas("S05", "Sala Taller", 30.0, 5)
+    reserva = Reserva("RES-007", crear_cliente(), sala, 1)
+    reserva.cancelar()
+    reserva.cancelar()
+
+
+# Cada escenario: (descripción, función, excepción esperada o None)
+ESCENARIOS = [
+    ("Reserva de sala confirmada y procesada", reserva_sala, None),
+    ("Alquiler de equipo", alquiler_equipo, None),
+    ("Asesoría especializada", asesoria_especializada, None),
+    ("Cancelación de una reserva", cancelar_reserva, None),
+    ("Cálculo de costos por tipo de servicio", costos_por_servicio, None),
+    ("Documento con letras", documento_invalido, DatoInvalidoError),
+    ("Correo sin arroba", correo_invalido, DatoInvalidoError),
+    ("Nombre vacío", nombre_vacio, DatoInvalidoError),
+    ("Teléfono inválido", telefono_invalido, DatoInvalidoError),
+    ("Horas negativas", horas_negativas, ReservaError),
+    ("Procesar sin confirmar", procesar_sin_confirmar, ReservaError),
+    ("Cancelar dos veces", cancelar_dos_veces, ReservaError),
+]
+
+
+def ejecutar_simulaciones():
+    logger.info("Inicio de simulaciones")
+    print("SIMULACIONES - SOFTWARE FJ")
     print("-" * 50)
-    
-    ok = 0
-    err = 0
 
-    for i in range(1, 11):
-        print(f"\nEjecutando prueba #{i}...")
+    exitosas = controladas = fallidas = 0
+
+    for numero, (descripcion, escenario, esperada) in enumerate(ESCENARIOS, start=1):
+        print(f"\n[{numero}/{len(ESCENARIOS)}] {descripcion}")
         try:
-            if i == 1:
-                cli = Cliente("1023456", "Carlos Pérez", "carlos@mail.com")
-                sala = ReservaSalas("S01", "Sala Ejecutiva", 50.0, 10)
-                res = Reserva("RES-001", cli, sala, 3)
-                res.procesar_reserva(3, 0.1)
-                print("-> Prueba 1 OK: Reserva de sala creada.")
-                ok += 1
-
-            elif i == 2:
-                print("-> Probando cédula inválida con letras...")
-                cli_mal = Cliente("ABC1234", "Ana Gómez", "ana@mail.com")
-
-            elif i == 3:
-                cli2 = Cliente("1023457", "María Rodríguez", "maria@mail.com")
-                eq = AlquilerEquipos("E01", "Laptop Core i7", 30.0, "SN-9988")
-                res2 = Reserva("RES-002", cli2, eq, 5)
-                res2.procesar_reserva(5)
-                print("-> Prueba 3 OK: Alquiler de equipo registrado.")
-                ok += 1
-
-            elif i == 4:
-                print("-> Probando correo sin @...")
-                cli_mal2 = Cliente("1023458", "Pedro Picapiedra", "pedromail.com")
-
-            elif i == 5:
-                cli3 = Cliente("1023459", "Lucía Torres", "lucia@mail.com")
-                ases = AsesoriaEspecializada("A01", "Consultoría Cloud", 120.0, "Arquitectura")
-                res3 = Reserva("RES-003", cli3, ases, 2)
-                res3.procesar_reserva(2)
-                print("-> Prueba 5 OK: Asesoría programada.")
-                ok += 1
-
-            elif i == 6:
-                print("-> Probando horas negativas...")
-                sala2 = ReservaSalas("S02", "Sala Juntas", 40.0, 6)
-                res4 = Reserva("RES-004", cli3, sala2, -4)
-                res4.procesar_reserva(-4)
-
-            elif i == 7:
-                eq2 = AlquilerEquipos("E02", "Proyector Laser", 45.0, "SN-1122")
-                res5 = Reserva("RES-005", cli, eq2, 2)
-                res5.procesar_reserva(2)
-                print("-> Prueba 7 OK: Segundo equipo alquilado.")
-                ok += 1
-
-            elif i == 8:
-                print("-> Prueba 8 OK: Validación estándar del sistema.")
-                ok += 1
-
-            elif i == 9:
-                res6 = Reserva("RES-006", cli2, ases, 1)
-                res6.procesar_reserva(1)
-                print("-> Prueba 9 OK: Sesión extra confirmada.")
-                ok += 1
-
+            escenario()
+        except Exception as error:
+            if esperada is not None and isinstance(error, esperada):
+                controladas += 1
+                print(f"   Error controlado: {error}")
+                logger.warning("Escenario %d (%s): %s", numero, descripcion, error)
             else:
-                print("-> Prueba 10 OK: Cierre de ciclo correcto.")
-                ok += 1
-
-        except (ClienteInvalidoError, ReservaError, ValueError) as e:
-            err += 1
-            print(f"-> Excepción controlada correctamente: {e}")
-            logging.warning(f"Error atrapado en op {i}: {e}")
-        except Exception as e:
-            err += 1
-            print(f"-> Error inesperado: {e}")
+                fallidas += 1
+                print(f"   Error inesperado: {type(error).__name__}: {error}")
+                logger.exception("Escenario %d (%s) falló", numero, descripcion)
+        else:
+            if esperada is None:
+                exitosas += 1
+                print("   Correcto")
+                logger.info("Escenario %d (%s) exitoso", numero, descripcion)
+            else:
+                fallidas += 1
+                print(f"   No se lanzó la excepción esperada ({esperada.__name__})")
+                logger.error("Escenario %d (%s): no lanzó %s",
+                             numero, descripcion, esperada.__name__)
+        finally:
+            logger.info("Escenario %d finalizado", numero)
 
     print("\n" + "=" * 50)
-    print(f"RESULTADOS: Exitosas: {ok} | Errores controlados: {err}")
-    print("=" * 50)
-
-if __name__ == "__main__":
-    correr_diez_operaciones()
-  # Agrego módulo de simulaciones
+    print(f"Exitosas: {exitosas} | Errores controlados: {controladas} | Fallidas: {fallidas}")
+    print("Detalle completo en logs/app.log")
+    logger.info("Fin de simulaciones")
