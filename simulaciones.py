@@ -1,4 +1,7 @@
-"""Escenarios de simulación del sistema de gestión de Software FJ."""
+"""Escenarios de simulación del sistema de gestión de Software FJ.
+
+Autor: Jean Carlos Redondo Cuadrado
+"""
 
 from exceptions.excepciones_personalizadas import (
     DatoInvalidoError,
