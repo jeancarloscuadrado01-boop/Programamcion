@@ -1,6 +1,10 @@
 """Escenarios de simulación del sistema de gestión de Software FJ."""
 
-from exceptions.excepciones_personalizadas import DatoInvalidoError, ReservaError
+from exceptions.excepciones_personalizadas import (
+    DatoInvalidoError,
+    ReservaError,
+    ServicioError,
+)
 from models.cliente import Cliente
 from models.reserva import Reserva
 from models.servicio_asesoria import AsesoriaEspecializada
@@ -11,12 +15,25 @@ from utils.logger import logger
 
 def crear_cliente(documento="1023456", nombre="Carlos Pérez",
                   correo="carlos@mail.com", telefono="3001234567"):
+    """Crea un cliente con datos válidos por defecto."""
     return Cliente(documento, nombre, correo, telefono)
 
 
 # Escenarios válidos
 
+def registro_clientes_validos():
+    """Registra varios clientes en una lista interna."""
+    clientes = [
+        crear_cliente(),
+        crear_cliente("1023457", "María Rodríguez", "maria@mail.com", "3009876543"),
+        crear_cliente("1023459", "Lucía Torres", "lucia@mail.com", "3005554433"),
+    ]
+    for cliente in clientes:
+        print(f"   {cliente}")
+
+
 def reserva_sala():
+    """Reserva una sala, la confirma y la procesa."""
     sala = ReservaSalas("S01", "Sala Ejecutiva", 50.0, 10)
     reserva = Reserva("RES-001", crear_cliente(), sala, 3)
     reserva.confirmar()
@@ -24,6 +41,7 @@ def reserva_sala():
 
 
 def alquiler_equipo():
+    """Alquila un equipo, lo confirma y lo procesa."""
     cliente = crear_cliente("1023457", "María Rodríguez", "maria@mail.com", "3009876543")
     equipo = AlquilerEquipos("E01", "Laptop Core i7", 30.0, "SN-9988")
     reserva = Reserva("RES-002", cliente, equipo, 5)
@@ -32,6 +50,7 @@ def alquiler_equipo():
 
 
 def asesoria_especializada():
+    """Programa una asesoría, la confirma y la procesa."""
     cliente = crear_cliente("1023459", "Lucía Torres", "lucia@mail.com", "3005554433")
     asesoria = AsesoriaEspecializada("A01", "Consultoría Cloud", 120.0, "Arquitectura")
     reserva = Reserva("RES-003", cliente, asesoria, 2)
@@ -40,6 +59,7 @@ def asesoria_especializada():
 
 
 def cancelar_reserva():
+    """Confirma una reserva y luego la cancela."""
     equipo = AlquilerEquipos("E02", "Proyector Laser", 45.0, "SN-1122")
     reserva = Reserva("RES-004", crear_cliente(), equipo, 2)
     reserva.confirmar()
@@ -47,13 +67,18 @@ def cancelar_reserva():
 
 
 def costos_por_servicio():
+    """Calcula el costo de cada servicio con sus variantes."""
     servicios = [
         ReservaSalas("S02", "Sala Juntas", 40.0, 6),
         AlquilerEquipos("E03", "Cámara 4K", 25.0, "SN-3344"),
         AsesoriaEspecializada("A02", "Asesoría Datos", 100.0, "Analítica"),
     ]
     for servicio in servicios:
-        print(f"   {type(servicio).__name__}: {servicio.calcular_costo(2)}")
+        base = servicio.calcular_costo(2)
+        con_descuento = servicio.calcular_costo(2, descuento=0.1)
+        con_impuesto = servicio.calcular_costo(2, impuesto=0.19)
+        print(f"   {type(servicio).__name__}: base={base} "
+              f"descuento={con_descuento} impuesto={con_impuesto}")
 
 
 # Escenarios inválidos
@@ -74,6 +99,14 @@ def telefono_invalido():
     crear_cliente(telefono="12ab")
 
 
+def servicio_precio_negativo():
+    ReservaSalas("S06", "Sala Inválida", -50.0, 10)
+
+
+def servicio_capacidad_cero():
+    ReservaSalas("S07", "Sala Sin Cupo", 40.0, 0)
+
+
 def horas_negativas():
     sala = ReservaSalas("S03", "Sala Mini", 20.0, 4)
     Reserva("RES-005", crear_cliente(), sala, -4)
@@ -91,24 +124,36 @@ def cancelar_dos_veces():
     reserva.cancelar()
 
 
+def equipo_ya_reservado():
+    equipo = AlquilerEquipos("E04", "Impresora 3D", 60.0, "SN-5566")
+    otro = crear_cliente("1023457", "María Rodríguez", "maria@mail.com", "3009876543")
+    Reserva("RES-008", crear_cliente(), equipo, 2).confirmar()
+    Reserva("RES-009", otro, equipo, 1).confirmar()
+
+
 # Cada escenario: (descripción, función, excepción esperada o None)
 ESCENARIOS = [
+    ("Registro de clientes válidos", registro_clientes_validos, None),
     ("Reserva de sala confirmada y procesada", reserva_sala, None),
     ("Alquiler de equipo", alquiler_equipo, None),
     ("Asesoría especializada", asesoria_especializada, None),
     ("Cancelación de una reserva", cancelar_reserva, None),
-    ("Cálculo de costos por tipo de servicio", costos_por_servicio, None),
+    ("Costos con descuento e impuesto", costos_por_servicio, None),
     ("Documento con letras", documento_invalido, DatoInvalidoError),
     ("Correo sin arroba", correo_invalido, DatoInvalidoError),
     ("Nombre vacío", nombre_vacio, DatoInvalidoError),
     ("Teléfono inválido", telefono_invalido, DatoInvalidoError),
+    ("Servicio con precio negativo", servicio_precio_negativo, ServicioError),
+    ("Servicio con capacidad cero", servicio_capacidad_cero, ServicioError),
     ("Horas negativas", horas_negativas, ReservaError),
     ("Procesar sin confirmar", procesar_sin_confirmar, ReservaError),
     ("Cancelar dos veces", cancelar_dos_veces, ReservaError),
+    ("Equipo ya reservado", equipo_ya_reservado, ReservaError),
 ]
 
 
 def ejecutar_simulaciones():
+    """Ejecuta todos los escenarios y muestra un resumen."""
     logger.info("Inicio de simulaciones")
     print("SIMULACIONES - SOFTWARE FJ")
     print("-" * 50)
@@ -124,6 +169,11 @@ def ejecutar_simulaciones():
                 controladas += 1
                 print(f"   Error controlado: {error}")
                 logger.warning("Escenario %d (%s): %s", numero, descripcion, error)
+                if error.__cause__ is not None:
+                    print(f"   Causa original: {type(error.__cause__).__name__}: "
+                          f"{error.__cause__}")
+                    logger.warning("Escenario %d: causa original %r",
+                                   numero, error.__cause__)
             else:
                 fallidas += 1
                 print(f"   Error inesperado: {type(error).__name__}: {error}")
